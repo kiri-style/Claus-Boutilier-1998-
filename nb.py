@@ -9,29 +9,33 @@ REWARD_MATRIX = np.array([
 ACTIONS = [0, 1]
 
 # ----- Parameters -----
-EPISODES = 5000
+EPISODES = 50
 ALPHA = 0.1
 GAMMA = 0.9
-TEMPERATURE = 1.0
+TEMPERATURE = 16.0
 
 # ----- Helper: Softmax sampling -----
 def softmax(q_values, temperature):
-    exp_q = np.exp(q_values / temperature)
+    q = q_values / temperature
+    q -= np.max(q)  # subtract max to stabilize (avoid overflow)
+    exp_q = np.exp(q)
     return exp_q / np.sum(exp_q)
 
 # ----- Training function: Normal Boltzmann exploration -----
-def train_normal_boltzmann(episodes=EPISODES, temperature=TEMPERATURE, alpha=ALPHA, gamma=GAMMA):
-    q1 = np.zeros(2)  # Q-values for agent 1
-    q2 = np.zeros(2)  # Q-values for agent 2
+def train_normal_boltzmann(episodes=5000, initial_temp=16.0, decay_rate=0.995, alpha=0.1, gamma=0.9):
+    q1 = np.zeros(2)
+    q2 = np.zeros(2)
     rewards = []
 
-    for _ in range(episodes):
-        # Softmax action selection
-        probs1 = softmax(q1, temperature)
-        probs2 = softmax(q2, temperature)
+    for t in range(episodes):
+        temp = max(initial_temp * (decay_rate ** t), 0.1)  # Ensure temp doesn’t go to 0
 
-        a1 = np.random.choice(ACTIONS, p=probs1)
-        a2 = np.random.choice(ACTIONS, p=probs2)
+        # Boltzmann action selection with current temperature
+        probs1 = softmax(q1, temp)
+        probs2 = softmax(q2, temp)
+
+        a1 = np.random.choice([0, 1], p=probs1)
+        a2 = np.random.choice([0, 1], p=probs2)
 
         reward = REWARD_MATRIX[a1, a2]
         rewards.append(reward)
